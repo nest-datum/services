@@ -162,10 +162,12 @@ export class LogsService {
 		const service = await this.select('logs');
 
 		if (service) {
+			const optionsData = (payload.toLogOptionsData() || {})['payload'];
+			
 			await lastValueFrom(service
 				.transporter
 				.send({ cmd: payload.getCmd() }, {
-					...payload.toLogOptionsData(),
+					...optionsData,
 					accessToken,
 				})
 				.pipe(map(response => response)));
