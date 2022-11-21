@@ -50,8 +50,9 @@ export class LogsService {
 			return true;
 		}
 		catch (err) {
-			await this.redisRegistry.hdel(this.serviceTypeName(replicaData['name']), replicaData['id']);
-
+			if (process.env.NODE_ENV !== 'development') {
+				await this.redisRegistry.hdel(this.serviceTypeName(replicaData['name']), replicaData['id']);
+			}
 			return false;
 		}
 	}
