@@ -6,15 +6,28 @@ import { ErrorException } from '@nest-datum/exceptions';
 
 let timeout;
 
+/**
+ * Cache manager with storage combinations.
+ * @class
+ * @classdesc Adding and retrieving data from the cache. Cache clearing algorithm.
+ */
 @Injectable()
 export class CacheService {
 	constructor(@InjectRedis(process.env.REDIS_CACHE_NAMESPACE) private readonly redisCache: Redis) {
 	}
 
-	takeCleaningProcess(name: string) {
-		this.redisCache[name] = true;
+	/**
+	 * Raises a flag indicating the start of the cleanup process.
+	 * @param {string} name - The name of the section in the radish to be cleared.
+	 */
+	takeCleaningProcess(name: string): boolean {
+		return (this.redisCache[name] = true);
 	}
 
+	/**
+	 * Remove the clear flag to end the process and unlock the cache.
+	 * @param {string} name - The name of the section in the radish to be cleared.
+	 */
 	releaseCleaningProcess(name: string) {
 		clearTimeout(timeout);
 
@@ -25,10 +38,19 @@ export class CacheService {
 		return timeout;
 	}
 
-	async keys(pattern: string) {
+	/**
+	 * Gets all the key in the radish according to the specified pattern.
+	 * @param {string} pattern
+	 */
+	async keys(pattern: string): Promise<any> {
 		return await this.redisCache.keys(pattern);
 	}
 
+	/**
+	 * Recursively clearing all keys in redis with scanStream functions.
+	 * @param {string} name - The name of the section in the radish to be cleared.
+	 * @param {string|number|undefined} query - The query on which the search pattern is formed.
+	 */
 	async clear(name: string, query: any|undefined = undefined): Promise<any> {
 		this.takeCleaningProcess(name);
 
@@ -84,6 +106,11 @@ export class CacheService {
 		return this.releaseCleaningProcess(name);
 	}
 
+	/**
+	 * Get data from cache.
+	 * @param {string} name - The name of the section in the radish to be cleared.
+	 * @param {string|number|undefined} query - The query on which the search pattern is formed.
+	 */
 	async get(name: string, query: any): Promise<any> {
 		try {
 			if (typeof query === 'undefined'
@@ -119,6 +146,12 @@ export class CacheService {
 		}
 	}
 
+	/**
+	 * Get data from cache.
+	 * @param {string} name - The name of the section in the radish to be cleared.
+	 * @param {string|number|undefined} query - The query on which the search pattern is formed.
+	 * @param {object} data - Data
+	 */
 	async set(name: string, query: any, data = {}): Promise<any> {
 		try {
 			if (typeof query === 'undefined'

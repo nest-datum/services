@@ -26,9 +26,18 @@ import { CacheService } from './cache.service';
 
 let dropTimeout;
 
+/**
+ * A service that manages the registration of services and the transport of data between them.
+ * @class
+ * @classdesc The class describes the functions of a load balancer, adding a service to Redis at application startup, as well as CRUD operations for managing existing replicas in Redis.
+ */
 @Injectable()
 export class RegistryService {
-	protected serviceName = 'registry';
+	/**
+	 * Current service name.
+	 * @defaultValue `registry`
+	 */
+	protected serviceName: string = 'registry';
 
 	constructor(
 		@InjectRedis(process.env.REDIS_REGISTRY_NAMESPACE) private readonly redisRegistry: Redis,
@@ -41,16 +50,28 @@ export class RegistryService {
 	 * Forms the name of the hashtable in radish for the values of the series, 
 	 * which store data about all replicas of the current service.
 	 * @param {string} name - Service name
-	 * @return {string}
 	 */
 	serviceTypeName(name: string = ''): string {
 		return `registry.${name || this.serviceName}`;
 	}
 
-	setServiceName(name: string): string {
-		return (this.serviceName = name);
+	/**
+	 * Set service name when registering it in redis
+	 * @param {string} name
+	 */
+	setServiceName(name: string = ''): string {
+		this.serviceName = name;
+
+		return name;
 	}
 
+	/**
+	 * Checking the server's health and increasing the load parameter by one. 
+	 * If the service is down, 
+	 * then remove it from the radish (only if NODE_ENV is not development).
+	 * @param {transporter} ClientRedis|ClientNats|ClientMqtt|ClientGrpcProxy|ClientKafka|ClientTCP
+	 * @param {replicaData} object
+	 */
 	async transporterConnected(transporter, replicaData): Promise<boolean> {
 		try {
 			await transporter.connect();
@@ -69,6 +90,9 @@ export class RegistryService {
 		}
 	}
 
+	/**
+	 * Decreases the value of load parameter by one.
+	 */
 	async clearResources(): Promise<any> {
 		const data = await this.redisRegistry.hmget(this.serviceTypeName(), process.env.APP_ID);
 		if (data[0]) {
@@ -93,7 +117,7 @@ export class RegistryService {
 	 * In case of incorrect operation, the replica is removed from the pool, 
 	 * and the balancer proceeds to search for the next matching replica.
 	 * @param {Array} replicas - List of microservice replicas to select the optimal one
-	 * @return {Promise}
+	 * @throws Will throw an error if replica is invalid or not found.
 	 */
 	async loadBalancer(replicas: object): Promise<any> {
 		let id,
@@ -149,7 +173,6 @@ export class RegistryService {
 	 * Choosing the optimal server for subsequent interaction with it. 
 	 * Getting data about the service and the object for transport logic.
 	 * @param {string} name - Service name
-	 * @return {Promise}
 	 */
 	async select(name: string): Promise<any> {
 		const data = await this.redisRegistry.hgetall(this.serviceTypeName(name));
@@ -163,6 +186,13 @@ export class RegistryService {
 		}
 	}
 
+	/**
+	 * Sending data to another service.
+	 * @param {string} name - Service name
+	 * @param {string} cmd - Command name
+	 * @param {object} payload - Data
+	 * @throws Will throw an error if the request is invalid or the service is not working correctly.
+	 */
 	async send(name: string, cmd: string, payload: object): Promise<any> {
 		const transporter = (await this.select(name) || {}).transporter;
 
@@ -192,6 +222,12 @@ export class RegistryService {
 		throw new NotFoundException(`Service not found.`, getCurrentLine(), { name, cmd, payload });
 	}
 
+	/**
+	 * Processing a request to get a list of data of the current entity 
+	 * (with the possibility of pagination, search, filtering, sorting).
+	 * @param {object} payload - Incoming request object.
+	 * @throws Will throw an error if the request is invalid or the database is not working correctly.
+	 */
 	async many(payload): Promise<any> {
 		try {
 			const cachedData = await this.cacheService.get(`${process.env.APP_ID}.registry.many`, payload);
@@ -241,6 +277,10 @@ export class RegistryService {
 		}
 	}
 
+	/**
+	 * Get service name by replica id
+	 * @param {string} id
+	 */
 	private async serviceTypeNameById(id: string): Promise<string> {
 		const manyData = await this.many({
 			page: 1,
@@ -258,6 +298,11 @@ export class RegistryService {
 		throw new NotFoundException(`Service with id does not exist.`, getCurrentLine(), { id });
 	}
 
+	/**
+	 * Get one model of current entity by payload request object.
+	 * @param {object} payload - Incoming request object.
+	 * @throws Will throw an error if the request is invalid or the database is not working correctly.
+	 */
 	async one(payload): Promise<any> {
 		try {
 			const cachedData = await this.cacheService.get(`${process.env.APP_ID}.registry.one`, payload);
@@ -298,6 +343,11 @@ export class RegistryService {
 		}
 	}
 
+	/**
+	 * Drop model of current entity by payload request object.
+	 * @param {object} payload - Incoming request object.
+	 * @throws Will throw an error if the request is invalid or the database is not working correctly.
+	 */
 	async drop(payload): Promise<any> {
 		try {
 			await this.cacheService.clear(`${process.env.APP_ID}.registry.many`);
@@ -330,6 +380,11 @@ export class RegistryService {
 		}
 	}
 
+	/**
+	 * Create model of current entity by payload request object.
+	 * @param {object} payload - Incoming request object.
+	 * @throws Will throw an error if the request is invalid or the database is not working correctly.
+	 */
 	async create(payload) {
 		try {
 			await this.cacheService.clear(`${process.env.APP_ID}.registry.many`);
@@ -352,6 +407,11 @@ export class RegistryService {
 		}
 	}
 
+	/**
+	 * Create model of current entity by payload request object.
+	 * @param {object} payload - Incoming request object.
+	 * @throws Will throw an error if the request is invalid or the database is not working correctly.
+	 */
 	async update(payload): Promise<any> {
 		try {
 			await this.cacheService.clear(`${process.env.APP_ID}.registry.many`);
@@ -393,6 +453,10 @@ export class RegistryService {
 		}
 	}
 
+	/**
+	 * Adds a new entry with information about the current replica 
+	 * to the service registry in Redis.
+	 */
 	async start() {
 		try {
 			const name = Validators.str('name', process.env.APP_NAME, {
@@ -441,6 +505,9 @@ export class RegistryService {
 		}
 	}
 
+	/**
+	 * 
+	 */
 	async getRoleAdmin(): Promise<object> {
 		return {
 			name: 'Admin',

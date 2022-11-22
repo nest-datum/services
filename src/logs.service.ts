@@ -14,6 +14,11 @@ import {
 } from '@nest-datum/exceptions';
 import { RegistryService } from './registry.service';
 
+/**
+ * Service for processing and sending logs.
+ * @class
+ * @classdesc Formation of data from exception objects for sending to the log service.
+ */
 @Injectable()
 export class LogsService {
 	public serviceName = 'logs';
@@ -25,19 +30,17 @@ export class LogsService {
 	 * Forms the name of the hashtable in radish for the values of the series, 
 	 * which store data about all replicas of the current service.
 	 * @param {string} name - Service name
-	 * @return {string}
 	 */
 	serviceTypeName(name: string = ''): string {
 		return `registry.${name || this.serviceName}`;
 	}
 
 	/**
-	 * Determine the health of the requested microservice 
-	 * and increase "load" parameter.
-	 * If the server does not respond, remove it from the pool.
-	 * @param {ClientTCP|ClientRedis|ClientNats|ClientMqtt|ClientGrpcProxy|ClientRMQ|ClientKafka} transporter - object created with ClientProxyFactory
-	 * @param {object} replicaData - Properties of selected replica
-	 * @return {boolean}
+	 * Checking the server's health and increasing the load parameter by one. 
+	 * If the service is down, 
+	 * then remove it from the radish (only if NODE_ENV is not development).
+	 * @param {transporter} ClientRedis|ClientNats|ClientMqtt|ClientGrpcProxy|ClientKafka|ClientTCP
+	 * @param {replicaData} object
 	 */
 	async transporterConnected(transporter, replicaData): Promise<boolean> {
 		try {
@@ -58,10 +61,7 @@ export class LogsService {
 	}
 
 	/**
-	 * Decrement the value of "load" property by one. 
-	 * The function is used after returning the result of the work of microservices 
-	 * as an indicator of the load on the service.
-	 * @return {void}
+	 * Decreases the value of load parameter by one.
 	 */
 	async clearResources(): Promise<any> {
 		const data = await this.redisRegistry.hmget(this.serviceTypeName(), process.env.APP_ID);
@@ -88,7 +88,7 @@ export class LogsService {
 	 * In case of incorrect operation, the replica is removed from the pool, 
 	 * and the balancer proceeds to search for the next matching replica.
 	 * @param {Array} replicas - List of microservice replicas to select the optimal one
-	 * @return {Promise}
+	 * @throws Will throw an error if replica is invalid or not found.
 	 */
 	async loadBalancer(replicas: object): Promise<any> {
 		let id,
@@ -145,7 +145,6 @@ export class LogsService {
 	 * Choosing the optimal server for subsequent interaction with it. 
 	 * Getting data about the service and the object for transport logic.
 	 * @param {string} name - Service name
-	 * @return {Promise}
 	 */
 	async select(name: string): Promise<any> {
 		const data = await this.redisRegistry.hgetall(this.serviceTypeName(name));
@@ -159,15 +158,20 @@ export class LogsService {
 		}
 	}
 
-	async emit(payload: Exception, accessToken = 'null') {
+	/**
+	 * Sending data to another service.
+	 * @param {Exception} exception - Exception instance.
+	 * @param {string|undefined} accessToken - Authed user access token.
+	 */
+	async emit(exception: Exception, accessToken = 'null') {
 		const service = await this.select('logs');
 
 		if (service) {
-			const optionsData = (payload.toLogOptionsData() || {})['payload'];
+			const optionsData = (exception.toLogOptionsData() || {})['payload'];
 			
 			await lastValueFrom(service
 				.transporter
-				.send({ cmd: payload.getCmd() }, {
+				.send({ cmd: exception.getCmd() }, {
 					...optionsData,
 					accessToken,
 				})
