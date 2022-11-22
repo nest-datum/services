@@ -179,7 +179,9 @@ export class RegistryService {
 				.send({ cmd }, payload)
 				.pipe(map(response => response)));
 
-			if (response['exceptionType']) {
+			if (response
+				&& typeof response === 'object'
+				&& response['exceptionType']) {
 				switch (response['exceptionType']) {
 					case 'notFound':
 						throw new NotFoundException(response['message'], getCurrentLine(), { name, cmd, payload });

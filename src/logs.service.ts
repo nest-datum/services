@@ -162,7 +162,11 @@ export class LogsService {
 	async emit(payload: Exception, accessToken = 'null') {
 		const service = await this.select('logs');
 
-		if (service) {
+		if (service
+			&& payload
+			&& typeof payload === 'object'
+			&& typeof payload['toLogOptionsData'] === 'function'
+			&& typeof payload['getCmd'] === 'function') {
 			const optionsData = (payload.toLogOptionsData() || {})['payload'];
 			
 			await lastValueFrom(service
