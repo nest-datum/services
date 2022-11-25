@@ -61,7 +61,7 @@ export class RegistryService {
 						? resolve(true)
 						: reject(new Error('Service is unavailable'));
 				}, 1000);
-			}))();
+			}));
 			await transporter.connect();
 
 			clearTimeout(timeout);
