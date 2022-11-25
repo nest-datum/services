@@ -53,7 +53,19 @@ export class RegistryService {
 
 	async transporterConnected(transporter, replicaData): Promise<boolean> {
 		try {
+			let timeout;
+
+			await (new Promise((resolve, reject) => {
+				timeout = setTimeout(() => {
+					transporter['isConnected']
+						? resolve(true)
+						: reject(new Error('Service is unavailable'));
+				}, 1000);
+			}))();
 			await transporter.connect();
+
+			clearTimeout(timeout);
+
 			await this.redisRegistry.hmset(this.serviceTypeName(replicaData['name']), replicaData['id'], JSON.stringify({
 				...replicaData,
 				load: replicaData['load'] + 1,
@@ -65,8 +77,8 @@ export class RegistryService {
 			if (process.env.NODE_ENV !== 'development') {
 				await this.redisRegistry.hdel(this.serviceTypeName(replicaData['name']), replicaData['id']);
 			}
-			return false;
 		}
+		return false;
 	}
 
 	async clearResources(): Promise<any> {
@@ -128,7 +140,7 @@ export class RegistryService {
 				},
 			});
 
-			if (!this.transporterConnected(transporter, selectedReplicaData)) {
+			if (!await this.transporterConnected(transporter, selectedReplicaData)) {
 				delete replicas[selectedReplicaData['id']];
 
 				return await this.loadBalancer(replicas);

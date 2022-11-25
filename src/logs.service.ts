@@ -41,7 +41,19 @@ export class LogsService {
 	 */
 	async transporterConnected(transporter, replicaData): Promise<boolean> {
 		try {
+			let timeout;
+
+			await (new Promise((resolve, reject) => {
+				timeout = setTimeout(() => {
+					transporter['isConnected']
+						? resolve(true)
+						: reject(new Error('Service is unavailable'));
+				}, 1000);
+			}))();
 			await transporter.connect();
+
+			clearTimeout(timeout);
+
 			await this.redisRegistry.hmset(this.serviceTypeName(replicaData['name']), replicaData['id'], JSON.stringify({
 				...replicaData,
 				load: replicaData['load'] + 1,
@@ -53,8 +65,8 @@ export class LogsService {
 			if (process.env.NODE_ENV !== 'development') {
 				await this.redisRegistry.hdel(this.serviceTypeName(replicaData['name']), replicaData['id']);
 			}
-			return false;
 		}
+		return false;
 	}
 
 	/**
@@ -124,7 +136,7 @@ export class LogsService {
 				},
 			});
 
-			if (!this.transporterConnected(transporter, selectedReplicaData)) {
+			if (!await this.transporterConnected(transporter, selectedReplicaData)) {
 				delete replicas[selectedReplicaData['id']];
 
 				return await this.loadBalancer(replicas);
@@ -160,22 +172,23 @@ export class LogsService {
 	}
 
 	async emit(payload: Exception, accessToken = 'null') {
-		const service = await this.select('logs');
-
-		if (service
-			&& payload
+		if (payload
 			&& typeof payload === 'object'
 			&& typeof payload['toLogOptionsData'] === 'function'
 			&& typeof payload['getCmd'] === 'function') {
-			const optionsData = (payload.toLogOptionsData() || {})['payload'];
+			const service = await this.select('logs');
 			
-			await lastValueFrom(service
-				.transporter
-				.send({ cmd: payload.getCmd() }, {
-					...optionsData,
-					accessToken,
-				})
-				.pipe(map(response => response)));
+			if (service) {
+				const optionsData = (payload.toLogOptionsData() || {})['payload'];
+				
+				await lastValueFrom(service
+					.transporter
+					.send({ cmd: payload.getCmd() }, {
+						...optionsData,
+						accessToken,
+					})
+					.pipe(map(response => response)));
+			}
 		}
 	}
 }
