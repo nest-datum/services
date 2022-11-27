@@ -211,10 +211,10 @@ export class MysqlService {
 
 	async dropByIsDeleted(repository, id, callback = (entity) => {}): Promise<any> {
 		const entity = await repository.findOne({
-			select: {
-				id: true,
-				isDeleted: true,
-			},
+			// select: {
+			// 	id: true,
+			// 	isDeleted: true,
+			// },
 			where: {
 				id,
 			},
