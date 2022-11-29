@@ -41,6 +41,16 @@ export class LogsService {
 	 */
 	async transporterConnected(transporter, replicaData): Promise<boolean> {
 		try {
+			const transportTimeout = parseInt(process.env.TRANSPORT_TIMEOUT);
+			const transporterAttempts = parseInt(process.env.TRANSPORT_ATTEMPTS);
+			const transportTimeoutNum = (typeof transportTimeout === 'number'
+				&& transportTimeout > 0)
+				? transportTimeout
+				: 200;
+			const transporterAttemptsNum = (typeof transporterAttempts === 'number'
+				&& transporterAttempts > 0)
+				? transporterAttempts
+				: 10;
 			let interval,
 				index = 0;
 
@@ -53,12 +63,12 @@ export class LogsService {
 						clearInterval(interval);
 						resolve(true);
 					}
-					else if (index >= 10) {
+					else if (index >= transporterAttemptsNum) {
 						clearInterval(interval);
 						reject(new Error('Service is unavailable'));
 					}
 					index += 1;
-				}, 200);
+				}, transportTimeoutNum);
 			}));
 			await this.redisRegistry.hmset(this.serviceTypeName(replicaData['name']), replicaData['id'], JSON.stringify({
 				...replicaData,
