@@ -1,6 +1,6 @@
 {
   "name": "@nest-datum/services",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "description": "Service classes for nestjs forming the nest-studio library",
   "author": "ihor-bielchenko",
   "license": "ISC",
@@ -61,9 +61,9 @@
   },
   "dependencies": {
     "@liaoliaots/nestjs-redis": "^9.0.4",
-    "@nest-datum/exceptions": "^1.0.2",
+    "@nest-datum/exceptions": "^1.0.3",
     "@nest-datum/jwt": "^1.0.2",
-    "@nest-datum/validators": "^1.0.5",
+    "@nest-datum/validators": "^1.0.6",
     "@nestjs/common": "^9.2.0",
     "@nestjs/microservices": "^9.2.0",
     "get-current-line": "^6.6.0",

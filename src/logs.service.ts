@@ -197,14 +197,20 @@ export class LogsService {
 			if (service) {
 				const optionsData = (payload.toLogOptionsData() || {})['payload'];
 				
-				await lastValueFrom(service
-					.transporter
-					.send({ cmd: payload.getCmd() }, {
-						...optionsData,
-						accessToken,
-					})
-					.pipe(map(response => response)));
+				try {
+					await lastValueFrom(service
+						.transporter
+						.send({ cmd: payload.getCmd() }, {
+							...optionsData,
+							accessToken,
+						})
+						.pipe(map(response => response)));
+				}
+				catch (err) {
+					console.error('Log emit error', err);
+				}
 			}
 		}
+		return payload;
 	}
 }
