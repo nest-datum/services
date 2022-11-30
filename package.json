@@ -1,6 +1,6 @@
 {
   "name": "@nest-datum/services",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "description": "Service classes for nestjs forming the nest-studio library",
   "author": "ihor-bielchenko",
   "license": "ISC",

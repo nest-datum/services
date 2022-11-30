@@ -362,6 +362,8 @@ export class RegistryService {
 
 	async create(payload) {
 		try {
+			const method = payload['method'];
+
 			await this.cacheService.clear(`${process.env.APP_ID}.registry.many`);
 			delete payload['method'];
 
@@ -372,6 +374,8 @@ export class RegistryService {
 				createdAt: Date.now(),
 				load: 0,
 			};
+
+			payload['method'] = method;
 
 			await this.redisRegistry.hmset(this.serviceTypeName(payload['name']), id, JSON.stringify(data));
 			await this.logsService.emit(new NotificationException(`New service registered "${payload['name']} - ${payload['host']}:${payload['port']}".`, payload));
@@ -463,7 +467,7 @@ export class RegistryService {
 					: {},
 				transport: process.env.TRANSPORT_PROVIDER,
 				user: {
-					manually: true,
+					id: 'sso-user-admin',
 				},
 				isStart: true,
 			});
