@@ -363,6 +363,7 @@ export class RegistryService {
 	async create(payload) {
 		try {
 			await this.cacheService.clear(`${process.env.APP_ID}.registry.many`);
+			delete payload['method'];
 
 			const id = payload['id'] || uuidv4();
 			const data = {
@@ -448,6 +449,7 @@ export class RegistryService {
 			process.env['APP_ID'] = id;
 
 			await this.create({
+				method: 'Service started',
 				id,
 				name,
 				host,
